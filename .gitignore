@@ -26,3 +26,4 @@ opentomb-code.layout
 OpenTomb\.xcodeproj/project\.xcworkspace
 OpenTomb\.xcodeproj/xcuserdata
 syntax: glob
+opentomb-code.depend
