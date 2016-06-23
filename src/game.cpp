@@ -23,7 +23,6 @@ extern "C" {
 #include "room.h"
 #include "world.h"
 #include "game.h"
-#include "camera.h"
 #include "audio.h"
 #include "skeletal_model.h"
 #include "entity.h"

@@ -149,6 +149,9 @@ void Cam_SetRotation(camera_p cam, GLfloat angles[3]);             // set orient
 void Cam_LookTo(camera_p cam, GLfloat to[3]);
 void Cam_RecalcClipPlanes(camera_p cam);                           // recalculation of camera frustum clipplanes
 
+void Cam_FollowEntity(struct camera_s *cam, struct entity_s *ent, float dx, float dz);
+void Cam_PlayFlyBy(float time);
+
 flyby_camera_sequence_p FlyBySequence_Create(flyby_camera_state_p start, uint32_t count);
 void FlyBySequence_Clear(flyby_camera_sequence_p s);
 void FlyBySequence_SetCamera(flyby_camera_sequence_p s, camera_p cam, float t);

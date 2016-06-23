@@ -22,7 +22,6 @@ extern "C" {
 #include "controls.h"
 #include "room.h"
 #include "world.h"
-#include "camera.h"
 //#include "audio.h"
 #include "skeletal_model.h"
 #include "entity.h"
