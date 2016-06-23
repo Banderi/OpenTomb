@@ -20,7 +20,7 @@ void Game_RegisterLuaFunctions(lua_State *lua);
 int  Game_Load(const char* name);
 int  Game_Save(const char* name);
 
-void  Game_Frame(float time);
+void Game_Frame(float time);
 
 void Game_Prepare();
 void Game_LevelTransition(uint16_t level_index);

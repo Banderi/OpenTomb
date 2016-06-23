@@ -871,6 +871,12 @@ void ShowDebugInfo()
 
     switch(screen_info.show_debuginfo)
     {
+        case 0:
+            {
+
+            }
+            break;
+
         case 1:
             {
                 entity_p ent = World_GetPlayer();
@@ -925,6 +931,12 @@ void ShowDebugInfo()
             {
                 GLText_OutTextXY(30.0f, y += dy, "input polygons = %07d", renderer.dynamicBSP->GetInputPolygonsCount());
                 GLText_OutTextXY(30.0f, y += dy, "added polygons = %07d", renderer.dynamicBSP->GetAddedPolygonsCount());
+            }
+            break;
+
+        default:
+            {
+
             }
             break;
     };
