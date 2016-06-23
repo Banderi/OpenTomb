@@ -1822,6 +1822,7 @@
 		<Unit filename="src/audio.h">
 			<Option target="&lt;{~None~}&gt;" />
 		</Unit>
+		<Unit filename="src/camera.cpp" />
 		<Unit filename="src/character_controller.cpp" />
 		<Unit filename="src/character_controller.h">
 			<Option target="&lt;{~None~}&gt;" />
