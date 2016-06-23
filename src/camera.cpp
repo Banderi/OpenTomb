@@ -34,6 +34,47 @@ extern "C" {
 //#include "inventory.h"
 
 
+void Cam_PlayFlyBy(float time)
+{
+    if(engine_camera_state.state == CAMERA_STATE_FLYBY)
+    {
+        const float max_time = engine_camera_state.flyby->pos_x->base_points_count - 1;
+        float speed = Spline_Get(engine_camera_state.flyby->speed, engine_camera_state.time);
+        engine_camera_state.time += time * speed / (1024.0f + 512.0f);
+        if(engine_camera_state.time <= max_time)
+        {
+            FlyBySequence_SetCamera(engine_camera_state.flyby, &engine_camera, engine_camera_state.time);
+        }
+        else
+        {
+            engine_camera_state.state = CAMERA_STATE_NORMAL;
+            engine_camera_state.flyby = NULL;
+            engine_camera_state.time = 0.0f;
+            Cam_SetFovAspect(&engine_camera, screen_info.fov, engine_camera.aspect);
+        }
+    }
+}
+
+
+int Cam_CheckCollision(struct camera_s *cam, entity_s *ent, float angle)
+{
+    float cameraFrom[3], cameraTo[3];
+
+    vec3_copy(cameraFrom, cam->pos);
+    cameraTo[0] = cameraFrom[0] + sinf((ent->angles[0] + angle) * (M_PI / 180.0)) * control_states.cam_distance;
+    cameraTo[1] = cameraFrom[1] - cosf((ent->angles[0] + angle) * (M_PI / 180.0)) * control_states.cam_distance;
+    cameraTo[2] = cameraFrom[2];
+
+    //Collision check
+    if(Physics_SphereTest(NULL, cameraFrom, cameraTo, 16.0f, ent->self))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+
 void Cam_FollowEntity(struct camera_s *cam, struct entity_s *ent, float dx, float dz)
 {
     float cam_pos[3], cameraFrom[3], cameraTo[3];
@@ -269,25 +310,3 @@ void Cam_FollowEntity(struct camera_s *cam, struct entity_s *ent, float dx, floa
     }
     cam->current_room = World_FindRoomByPosCogerrence(cam->pos, cam->current_room);
 }
-
-void Cam_PlayFlyBy(float time)
-{
-    if(engine_camera_state.state == CAMERA_STATE_FLYBY)
-    {
-        const float max_time = engine_camera_state.flyby->pos_x->base_points_count - 1;
-        float speed = Spline_Get(engine_camera_state.flyby->speed, engine_camera_state.time);
-        engine_camera_state.time += time * speed / (1024.0f + 512.0f);
-        if(engine_camera_state.time <= max_time)
-        {
-            FlyBySequence_SetCamera(engine_camera_state.flyby, &engine_camera, engine_camera_state.time);
-        }
-        else
-        {
-            engine_camera_state.state = CAMERA_STATE_NORMAL;
-            engine_camera_state.flyby = NULL;
-            engine_camera_state.time = 0.0f;
-            Cam_SetFovAspect(&engine_camera, screen_info.fov, engine_camera.aspect);
-        }
-    }
-}
-
