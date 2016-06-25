@@ -5,11 +5,19 @@
 
 cmake_minimum_required(VERSION 2.8)
 
+include("cmake/HunterGate.cmake")
+HunterGate(
+    URL "https://github.com/stohrendorf/hunter/archive/3b5ddd4e70cb96e089e4ff98f60addedfb34a4c2.zip"
+    SHA1 "793706a63f7df16b2c23774da12d2193383d16f9"
+)
+
 project(OpenTomb)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
-message(WARNING "This CMakeLists.txt does not generate usable executables, it is only used to process the documentation and test compilability.")
+#message(WARNING "This CMakeLists.txt does not generate usable executables, it is only used to process the documentation and test compilability.")
+
+####
 
 add_subdirectory(doc)
 
@@ -60,24 +68,44 @@ add_executable(OpenTomb ${OPENTOMB_SRCS} $<TARGET_OBJECTS:core>)
 if(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_COMPILER_IS_GNUCC)
     message(STATUS "GNU-like compilers detected")
     # Trimming the string may result in a compilation error
-    target_compile_options(OpenTomb PRIVATE "-std=c++11")
 endif()
 
-include(FindPkgConfig)
-pkg_search_module(SDL2_IMAGE REQUIRED SDL2_image)
-find_package(SDL2 REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(Lua REQUIRED)
+#target_compile_options(OpenTomb PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-std=c++11> $<$<COMPILE_LANGUAGE:C>:-std=c99>)
+set_target_properties(OpenTomb PROPERTIES C_STANDARD 99 CXX_STANDARD 11)
 
-target_include_directories(
-    OpenTomb PRIVATE
-    ${SDL2_INCLUDE_DIR}
-    ${SDL2_IMAGE_INCLUDE_DIRS}
-    ${ZLIB_INCLUDE_DIR}
-    ${LUA_INCLUDE_DIR}
-)
+####
 
-target_link_libraries(OpenTomb ${SDL2_LIBRARY} ${SDL2_IMAGE_LIBRARIES} ${ZLIB_LIBRARY} ${LUA_LIBRARY})
+if(WIN32 OR APPLE)
+    option(DEFAULT_EXTERNAL_HUNTER "Always ignore system-provided libraries." ON)
+else()
+    option(DEFAULT_EXTERNAL_HUNTER "Always ignore system-provided libraries." OFF)
+endif()
+message(STATUS "Always ignore system-provided libraries: ${DEFAULT_EXTERNAL_HUNTER}")
+
+# alternative system-provided package name
+macro(ot_find_dependency_alt depname sysdepname)
+    option(SKIP_SYSTEM_${depname} "Skip the sytem-provided ${depname} installation and use a custom built" ${DEFAULT_EXTERNAL_HUNTER})
+    if(SKIP_SYSTEM_${depname})
+        hunter_add_package(${depname} ${ARGN})
+        find_package(${depname} REQUIRED ${ARGN})
+    else()
+        # temporarily disable Hunter-local Find* modules
+        set(_old_cmp ${CMAKE_MODULE_PATH})
+        set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
+        find_package(${sysdepname} MODULE REQUIRED ${ARGN})
+        # restore module path
+        set(CMAKE_MODULE_PATH ${_old_cmp})
+        set(_old_cmp)
+    endif()
+    if(NOT TARGET ${depname})
+        add_library(${depname} INTERFACE)
+    endif()
+endmacro()
+macro(ot_find_dependency depname)
+    ot_find_dependency_alt(${depname} ${depname} ${ARGN})
+endmacro()
+
+####
 
 set(BULLET_SRCS
     extern/bullet/BulletCollision/BroadphaseCollision/btAxisSweep3.cpp
@@ -370,22 +398,79 @@ set(CORE_SRCS
     src/core/vmath.c
 )
 
-add_library(core OBJECT ${CORE_SRCS})
-target_include_directories(core PUBLIC extern/freetype2/include)
-target_compile_options(core PUBLIC "-std=c99")
+####
 
+#include(FindPkgConfig)
+#pkg_search_module(SDL2_IMAGE REQUIRED SDL2_image)
+
+# Dependency: OpenAL
+ot_find_dependency(OpenAL)
+target_include_directories(OpenAL INTERFACE ${OPENAL_INCLUDE_DIR})
+target_link_libraries(OpenAL INTERFACE ${OPENAL_LIBRARY})
+option(USE_OPENAL_FLOAT "Use OpenAL Soft floating-point extensions (not generally available)." OFF)
+if(USE_OPENAL_FLOAT)
+    target_compile_definitions(OpenAL INTERFACE -DAUDIO_OPENAL_FLOAT)
+endif(USE_OPENAL_FLOAT)
+
+target_include_directories(
+    OpenTomb PRIVATE
+    #${SDL2_INCLUDE_DIR}
+    #${SDL2_IMAGE_INCLUDE_DIRS}
+    #${ZLIB_INCLUDE_DIR}
+    #${LUA_INCLUDE_DIR}
+    # this is a workaround
+    # system headers are incompatible because OpenTomb expects it in a different place
+    # it need to be fixed in OpenTomb first
+    extern/al
+)
+
+#target_link_libraries(OpenTomb ${SDL2_LIBRARY} ${SDL2_IMAGE_LIBRARIES} ${ZLIB_LIBRARY} ${LUA_LIBRARY} ${OPENAL_LIBRARY})
+
+add_library(core OBJECT ${CORE_SRCS})
+target_include_directories(core PUBLIC extern/freetype2/include ${LUA_INCLUDE_DIR})
+#target_compile_options(core PUBLIC $<$<COMPILE_LANGUAGE:C>:-std=c99>)
+set_target_properties(core PROPERTIES C_STANDARD 99)
+
+# Dependency: BULLET
+#ot_find_dependency(BULLET)
 add_library(bullet STATIC ${BULLET_SRCS})
 target_include_directories(bullet PUBLIC extern/bullet)
 target_link_libraries(OpenTomb bullet)
 
+# Dependency: OGG
 add_library(ogg STATIC ${OGG_SRCS})
 target_include_directories(ogg PUBLIC extern/ogg)
 target_link_libraries(OpenTomb ogg)
 
+# Dependency: Freetype2
 add_library(freetype2 STATIC ${FREETYPE_SRCS})
 target_include_directories(freetype2 PUBLIC extern/freetype2/include)
+target_include_directories(freetype2 PUBLIC ${ZLIB_INCLUDE_DIR})
 target_link_libraries(OpenTomb freetype2)
+#target_link_libraries(ZLIB INTERFACE ${ZLIB_LIBRARIES})
 
-add_library(OpenAL STATIC ${OPENAL_SRCS})
-target_include_directories(OpenAL PUBLIC extern/al)
-target_link_libraries(OpenTomb OpenAL)
+# Dependency: ZLIB
+ot_find_dependency(ZLIB)
+target_link_libraries(ZLIB INTERFACE ${ZLIB_LIBRARIES})
+target_include_directories(ZLIB INTERFACE ${ZLIB_INCLUDE_DIR})
+
+# Dependency: SDL2
+ot_find_dependency(SDL2)
+if(WIN32)
+    target_link_libraries(SDL2 INTERFACE winmm imm32 version)
+endif()
+target_link_libraries(SDL2 INTERFACE ${SDL2_LIBRARY})
+target_include_directories(SDL2 INTERFACE ${SDL2_INCLUDE_DIR})
+
+# Dependency: SDL2_IMAGE
+ot_find_dependency(SDL2_image)
+if(WIN32)
+    target_link_libraries(SDL2_image INTERFACE winmm imm32 version)
+endif()
+target_link_libraries(SDL2_image INTERFACE ${SDL2_IMAGE_LIBRARIES}}})
+target_include_directories(SDL2_image INTERFACE ${SDL2_IMAGE_INCLUDE_DIRS}})
+
+# Dependency: Lua
+ot_find_dependency(Lua)
+target_link_libraries(Lua INTERFACE ${LUA_LIBRARIES})
+target_include_directories(Lua INTERFACE ${LUA_INCLUDE_DIR})
