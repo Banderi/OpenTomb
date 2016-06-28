@@ -37,6 +37,8 @@
  *      - click removal;
  *      - add ADPCM and CDAUDIO.WAD soundtrack support;
  */
+ 
+#undef main
 
 int main(int argc, char **argv)
 {
